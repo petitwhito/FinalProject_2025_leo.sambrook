@@ -94,7 +94,6 @@ def check_data_quality(df, name="DataFrame"):
         print(f"\nDuplicate rows: {duplicates} ({duplicates/len(df)*100:.2f}%)")
     except TypeError:
         print("\nCould not check for duplicates due to unhashable types (like lists) in the DataFrame")
-        # Alternative approach for columns that might contain lists
         hashable_cols = [col for col in df.columns if not df[col].apply(lambda x: isinstance(x, (list, dict))).any()]
         if hashable_cols:
             duplicates = df.duplicated(subset=hashable_cols).sum()
@@ -221,7 +220,6 @@ def create_train_test_split(interaction_df, test_size=0.2, by_user=True, random_
         train_df = pd.concat(train_dfs, ignore_index=True)
         test_df = pd.concat(test_dfs, ignore_index=True)
     else:
-        # Simple random split
         train_df = interaction_df.sample(frac=1-test_size, random_state=random_state)
         test_df = interaction_df.drop(train_df.index)
     
