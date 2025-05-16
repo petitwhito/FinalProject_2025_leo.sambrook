@@ -1,19 +1,11 @@
-# Hybrid recommendation models for KuaiRec recommender system
-
 import lightgbm as lgb
+import pickle
 
 class LightGBMModel:
     """Hybrid model using LightGBM."""
     
     def __init__(self, params=None):
-        """
-        Initialize LightGBM model.
-        
-        Parameters:
-        -----------
-        params : dict, optional
-            LightGBM parameters
-        """
+        """Set up LightGBM model with default or custom parameters."""
         # Default parameters
         if params is None:
             self.params = {
@@ -36,44 +28,33 @@ class LightGBMModel:
     
     def fit(self, train_features_df, feature_columns=None,
            num_boost_round=1000):
-        """
-        Train the model on the training data.
-        
-        Parameters:
-        -----------
-        train_features_df : pandas.DataFrame
-            DataFrame with training features
-        feature_columns : list, optional
-            List of columns to use as features
-        num_boost_round : int
-            Number of boosting rounds
-        """
-        # If no feature columns specified, use all except ID columns and target
+        """Train model on the given features."""
+        # Figure out which columns to use as features
         if feature_columns is None:
             exclude_cols = ['user_id', 'video_id', 'watch_ratio', 'time', 'date', 'timestamp', 'datetime']
             feature_columns = [col for col in train_features_df.columns if col not in exclude_cols]
         
         self.feature_names = feature_columns
         
-        # Extract features and target
+        # Get features and target
         X = train_features_df[feature_columns]
         y = train_features_df['watch_ratio']
         
-        # Convert categorical variables to numeric
+        # Handle categorical variables
         for col in X.select_dtypes(include=['object', 'category']).columns:
             X[col] = X[col].astype('category').cat.codes
         
-        # Split into train and validation
+        # Create train/validation split
         valid_size = int(0.2 * len(X))
         X_train, X_valid = X.iloc[:-valid_size], X.iloc[-valid_size:]
         y_train, y_valid = y.iloc[:-valid_size], y.iloc[-valid_size:]
         
-        # Create datasets
+        # Set up LightGBM datasets
         categorical_features = X.select_dtypes(include=['category']).columns.tolist()
         train_data = lgb.Dataset(X_train, label=y_train, categorical_feature=categorical_features)
         valid_data = lgb.Dataset(X_valid, label=y_valid, reference=train_data, categorical_feature=categorical_features)
         
-        # Train model
+        # Train the model
         self.model = lgb.train(
             self.params,
             train_data,
@@ -84,49 +65,35 @@ class LightGBMModel:
         return self
     
     def predict(self, features):
-        """
-        Predict watch ratio.
-        
-        Parameters:
-        -----------
-        features : pandas.DataFrame
-            Features for prediction
-            
-        Returns:
-        --------
-        numpy.ndarray
-            Predicted watch ratios
-        """
-        # Prepare features
+        """Make predictions for the given features."""
+        # Prepare feature data
         X = features[self.feature_names].copy()
         
-        # Convert categorical variables to numeric
+        # Handle categorical variables
         for col in X.select_dtypes(include=['object', 'category']).columns:
             X[col] = X[col].astype('category').cat.codes
         
-        # Make predictions
+        # Generate predictions
         return self.model.predict(X)
     
     def save(self, filepath):
-        """Save the model to a file."""
-        # Save model
+        """Save model to disk."""
+        # Save the model itself
         self.model.save_model(filepath + '.model')
         
-        # Save feature names
-        import pickle
+        # Save feature names separately
         with open(filepath + '.features', 'wb') as f:
             pickle.dump(self.feature_names, f)
     
     @classmethod
     def load(cls, filepath):
-        """Load a model from a file."""
+        """Load model from disk."""
         model = cls()
         
-        # Load model
+        # Load the model
         model.model = lgb.Booster(model_file=filepath + '.model')
         
         # Load feature names
-        import pickle
         with open(filepath + '.features', 'rb') as f:
             model.feature_names = pickle.load(f)
         

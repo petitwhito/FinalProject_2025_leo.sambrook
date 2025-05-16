@@ -12,19 +12,10 @@ from src.models.sequence_aware import SequentialRules
 from src.models.hybrid import LightGBMModel
 
 class KuaiRecRecommender:
-    """Main recommender system for KuaiRec video recommendations."""
+    """Main recommender system for KuaiRec videos."""
     
     def __init__(self, models_dir="../models", processed_dir="../data/processed"):
-        """
-        Initialize the recommender.
-        
-        Parameters:
-        -----------
-        models_dir : str
-            Directory containing trained models
-        processed_dir : str
-            Directory containing processed data
-        """
+        """Set up recommender with model and data directories."""
         self.models_dir = models_dir
         self.processed_dir = processed_dir
         
@@ -126,30 +117,15 @@ class KuaiRecRecommender:
         if self.content_model is None or user_id not in self.content_model.user_profiles:
             return []
         
-        # Get user profile
-        user_profile = self.content_model.user_profiles[user_id]
-        
-        # Calculate similarity with all items
-        similarities = np.dot(self.content_model.item_profiles, user_profile)
-        
-        # Exclude seen items if possible
+        # Get list of seen items to exclude
+        exclude_items = []
         if self.interaction_matrix is not None and user_id in self.user_indices:
             user_idx = self.user_indices[user_id]
             seen_items = self.interaction_matrix[user_idx].nonzero()[1]
-            for idx in seen_items:
-                # Find the corresponding index in content model item_ids
-                item_id = self.index_to_item[idx]
-                try:
-                    content_idx = np.where(self.content_model.item_ids == item_id)[0][0]
-                    similarities[content_idx] = -np.inf
-                except:
-                    pass
+            exclude_items = [self.index_to_item[idx] for idx in seen_items]
         
-        # Find top N items
-        top_indices = np.argsort(similarities)[-n:][::-1]
-        
-        # Convert to (item_id, score) format
-        return [(self.content_model.item_ids[idx], similarities[idx]) for idx in top_indices]
+        # Use the content model's recommend method
+        return self.content_model.recommend(user_id, n=n, exclude_items=exclude_items)
     
     def recommend_sequence(self, user_id, n=10):
         """Generate sequence-aware recommendations."""
@@ -163,27 +139,11 @@ class KuaiRecRecommender:
         if len(sequence) < 2:
             return []
         
-        # Get recommendations
-        return self.seq_model.predict_next(sequence, k=n)
+        # Get recommendations (scores are already normalized in the model)
+        return self.seq_model.predict_next(sequence, k=n, normalize=True)
     
     def recommend(self, user_id, n=10, weights=None):
-        """
-        Generate recommendations for a user using all available models.
-        
-        Parameters:
-        -----------
-        user_id : int
-            User ID
-        n : int
-            Number of recommendations to generate
-        weights : dict, optional
-            Weights for each model (collaborative, content, sequence, hybrid)
-            
-        Returns:
-        --------
-        list
-            List of (item_id, score) tuples
-        """
+        """Generate recommendations using all available models."""
         # Default weights
         if weights is None:
             weights = {
@@ -215,33 +175,15 @@ class KuaiRecRecommender:
         
         # Add sequence-aware recommendations
         for item_id, score in seq_recs:
-            # Normalize score by dividing by the maximum possible count
-            norm_score = score / (self.seq_model.min_support * 10)  # Assuming max count is 10 times min_support
-            all_items[item_id] = all_items.get(item_id, 0) + norm_score * weights['sequence']
+            # Scores are already normalized in the SequentialRules model
+            all_items[item_id] = all_items.get(item_id, 0) + score * weights['sequence']
         
         # Sort by score and return top N
         sorted_items = sorted(all_items.items(), key=lambda x: x[1], reverse=True)
         return sorted_items[:n]
     
     def generate_recommendations_for_all_users(self, users=None, n=10, weights=None):
-        """
-        Generate recommendations for all users or a subset of users.
-        
-        Parameters:
-        -----------
-        users : list, optional
-            List of user IDs to generate recommendations for.
-            If None, generate for all users.
-        n : int
-            Number of recommendations per user
-        weights : dict, optional
-            Weights for each model
-            
-        Returns:
-        --------
-        dict
-            Dictionary mapping user IDs to their recommendations
-        """
+        """Generate recommendations for all users or a subset of users."""
         if users is None:
             users = list(self.user_indices.keys())
         
@@ -254,16 +196,7 @@ class KuaiRecRecommender:
         return recommendations
     
     def save_recommendations(self, recommendations, filepath):
-        """
-        Save recommendations to a file.
-        
-        Parameters:
-        -----------
-        recommendations : dict
-            Dictionary mapping user IDs to their recommendations
-        filepath : str
-            Path to save the recommendations
-        """
+        """Save recommendations to a file."""
         # Convert to DataFrame format
         rows = []
         

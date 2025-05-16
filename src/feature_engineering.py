@@ -1,27 +1,11 @@
-# Feature engineering functions for KuaiRec recommender system
 import pandas as pd
 import numpy as np
 from scipy import sparse
 import os
-from datetime import datetime
 
 def create_user_features(interaction_df, user_features_df=None):
-    """
-    Create user-based features from interaction history and user metadata.
-    
-    Parameters:
-    -----------
-    interaction_df : pandas.DataFrame
-        User-item interaction data
-    user_features_df : pandas.DataFrame, optional
-        Additional user metadata
-        
-    Returns:
-    --------
-    pandas.DataFrame
-        DataFrame with user features
-    """
-    # Get basic user statistics from interactions
+    """Create user features from interaction history and metadata."""
+    # Get basic user stats from interactions
     user_stats = interaction_df.groupby('user_id').agg({
         'watch_ratio': ['mean', 'std', 'min', 'max', 'count'],
         'play_duration': ['mean', 'sum'],
@@ -35,7 +19,7 @@ def create_user_features(interaction_df, user_features_df=None):
     # Calculate play-to-duration ratio
     user_stats['avg_play_to_duration_ratio'] = user_stats['play_duration_mean'] / user_stats['video_duration_mean']
     
-    # Calculate activity level (number of interactions)
+    # Calculate activity level
     user_stats['activity_level'] = pd.qcut(
         user_stats['watch_ratio_count'], 
         q=5, 
@@ -51,24 +35,8 @@ def create_user_features(interaction_df, user_features_df=None):
     return user_features
 
 def create_item_features(interaction_df, item_categories_df=None, item_daily_df=None):
-    """
-    Create item-based features from interaction history and item metadata.
-    
-    Parameters:
-    -----------
-    interaction_df : pandas.DataFrame
-        User-item interaction data
-    item_categories_df : pandas.DataFrame, optional
-        Item category information
-    item_daily_df : pandas.DataFrame, optional
-        Daily item metrics
-        
-    Returns:
-    --------
-    pandas.DataFrame
-        DataFrame with item features
-    """
-    # Get basic item statistics from interactions
+    """Create item features from interaction history and metadata."""
+    # Get basic item stats from interactions
     item_stats = interaction_df.groupby('video_id').agg({
         'watch_ratio': ['mean', 'std', 'min', 'max', 'count'],
         'play_duration': ['mean', 'sum'],
@@ -83,10 +51,10 @@ def create_item_features(interaction_df, item_categories_df=None, item_daily_df=
         item_stats['watch_ratio_count'], 
         q=5, 
         labels=['very_low', 'low', 'medium', 'high', 'very_high'],
-        duplicates='drop'  # Handle ties
+        duplicates='drop'
     )
     
-    # Calculate engagement score (e.g., avg watch ratio * count)
+    # Calculate engagement score
     item_stats['engagement_score'] = item_stats['watch_ratio_mean'] * np.log1p(item_stats['watch_ratio_count'])
     
     # Merge with item categories if available
@@ -111,7 +79,7 @@ def create_item_features(interaction_df, item_categories_df=None, item_daily_df=
     else:
         item_features = item_stats
     
-    # Add daily metrics if available (aggregated)
+    # Add daily metrics if available
     if item_daily_df is not None:
         daily_agg = item_daily_df.groupby('video_id').agg({
             'play_cnt': 'sum',
@@ -132,23 +100,7 @@ def create_item_features(interaction_df, item_categories_df=None, item_daily_df=
     return item_features
 
 def create_interaction_features(interaction_df, user_features_df=None, item_features_df=None):
-    """
-    Create interaction-based features combining user and item information.
-    
-    Parameters:
-    -----------
-    interaction_df : pandas.DataFrame
-        User-item interaction data
-    user_features_df : pandas.DataFrame, optional
-        User features
-    item_features_df : pandas.DataFrame, optional
-        Item features
-        
-    Returns:
-    --------
-    pandas.DataFrame
-        DataFrame with interaction features
-    """
+    """Create interaction features combining user and item information."""
     interactions = interaction_df.copy()
     
     # Add temporal features if available
@@ -165,7 +117,7 @@ def create_interaction_features(interaction_df, user_features_df=None, item_feat
     
     # Add user features if available
     if user_features_df is not None:
-        # Select only necessary columns to avoid excessive memory usage
+        # Select only necessary columns
         user_cols = ['user_id', 'watch_ratio_mean', 'activity_level']
         if 'user_active_degree' in user_features_df.columns:
             user_cols.append('user_active_degree')
@@ -179,7 +131,7 @@ def create_interaction_features(interaction_df, user_features_df=None, item_feat
     
     # Add item features if available
     if item_features_df is not None:
-        # Select only necessary columns to avoid excessive memory usage
+        # Select only necessary columns
         item_cols = ['video_id', 'watch_ratio_mean', 'popularity', 'engagement_score']
         
         interactions = interactions.merge(
@@ -201,23 +153,7 @@ def create_interaction_features(interaction_df, user_features_df=None, item_feat
     return interactions
 
 def build_interaction_matrix(interaction_df, rating_col='watch_ratio', normalize=False):
-    """
-    Build a user-item interaction matrix from interaction data.
-    
-    Parameters:
-    -----------
-    interaction_df : pandas.DataFrame
-        User-item interaction data
-    rating_col : str
-        Column to use as the rating value
-    normalize : bool
-        Whether to normalize ratings by user
-        
-    Returns:
-    --------
-    tuple
-        (sparse matrix, user_indices, item_indices)
-    """
+    """Build a user-item interaction matrix from interaction data."""
     # Create user and item indices
     user_indices = {user: i for i, user in enumerate(interaction_df['user_id'].unique())}
     item_indices = {item: i for i, item in enumerate(interaction_df['video_id'].unique())}
@@ -245,21 +181,7 @@ def build_interaction_matrix(interaction_df, rating_col='watch_ratio', normalize
     return matrix, user_indices, item_indices
 
 def extract_social_features(interaction_df, social_network_df):
-    """
-    Extract features based on social network information.
-    
-    Parameters:
-    -----------
-    interaction_df : pandas.DataFrame
-        User-item interaction data
-    social_network_df : pandas.DataFrame
-        Social network data
-        
-    Returns:
-    --------
-    pandas.DataFrame
-        DataFrame with social network features
-    """
+    """Extract features based on social network information."""
     if social_network_df is None or len(social_network_df) == 0:
         return pd.DataFrame({'user_id': interaction_df['user_id'].unique()})
     
@@ -332,16 +254,7 @@ def extract_social_features(interaction_df, social_network_df):
     return pd.DataFrame(social_features)
 
 def save_features(features_dict, output_dir):
-    """
-    Save features to disk.
-    
-    Parameters:
-    -----------
-    features_dict : dict
-        Dictionary of feature DataFrames
-    output_dir : str
-        Directory to save features
-    """
+    """Save features to disk."""
     os.makedirs(output_dir, exist_ok=True)
     
     for name, df in features_dict.items():

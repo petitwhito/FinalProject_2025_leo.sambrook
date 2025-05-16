@@ -7,19 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 def load_kuairec_data(data_path="../data/KuaiRec/data/"):
-    """
-    Load all KuaiRec dataset files.
-    
-    Parameters:
-    -----------
-    data_path : str
-        Path to the directory containing KuaiRec data files
-        
-    Returns:
-    --------
-    dict
-        Dictionary containing all loaded dataframes
-    """
+    """Load all KuaiRec dataset files."""
     print("Loading KuaiRec datasets...")
     
     # Load interaction data
@@ -57,21 +45,7 @@ def load_kuairec_data(data_path="../data/KuaiRec/data/"):
     }
 
 def check_data_quality(df, name="DataFrame"):
-    """
-    Check data quality issues like missing values, duplicates, etc.
-    
-    Parameters:
-    -----------
-    df : pandas.DataFrame
-        DataFrame to check
-    name : str
-        Name of the DataFrame for reporting purposes
-        
-    Returns:
-    --------
-    dict
-        Dictionary containing data quality metrics
-    """
+    """Check for data issues like missing values and duplicates."""
     print(f"\n--- Data Quality Check for {name} ---")
     
     # Basic info
@@ -88,7 +62,8 @@ def check_data_quality(df, name="DataFrame"):
     print("\nMissing Values:")
     print(missing_df[missing_df['Missing Values'] > 0])
     
-    # Duplicates - handle unhashable types like lists
+    # Duplicates handle unhashable types like lists
+    # Happens social network and item categories dataframes
     try:
         duplicates = df.duplicated().sum()
         print(f"\nDuplicate rows: {duplicates} ({duplicates/len(df)*100:.2f}%)")
@@ -143,21 +118,7 @@ def check_data_quality(df, name="DataFrame"):
     }
 
 def preprocess_interaction_data(df, timestamp_to_datetime=True):
-    """
-    Preprocess interaction data (small_matrix or big_matrix).
-    
-    Parameters:
-    -----------
-    df : pandas.DataFrame
-        Interaction DataFrame to preprocess
-    timestamp_to_datetime : bool
-        Whether to convert timestamp to datetime
-        
-    Returns:
-    --------
-    pandas.DataFrame
-        Preprocessed DataFrame
-    """
+    """Clean and prepare interaction data for analysis."""
     # Create a copy to avoid modifying the original
     processed_df = df.copy()
     
@@ -179,25 +140,7 @@ def preprocess_interaction_data(df, timestamp_to_datetime=True):
     return processed_df
 
 def create_train_test_split(interaction_df, test_size=0.2, by_user=True, random_state=42):
-    """
-    Split interaction data into training and testing sets.
-    
-    Parameters:
-    -----------
-    interaction_df : pandas.DataFrame
-        Interaction DataFrame to split
-    test_size : float
-        Proportion of data to use for testing
-    by_user : bool
-        If True, split interactions for each user separately
-    random_state : int
-        Random seed for reproducibility
-        
-    Returns:
-    --------
-    tuple
-        (train_df, test_df) - Training and testing DataFrames
-    """
+    """Split data into training and testing sets."""
     np.random.seed(random_state)
     
     if by_user:
@@ -229,22 +172,7 @@ def create_train_test_split(interaction_df, test_size=0.2, by_user=True, random_
     return train_df, test_df
 
 def visualize_data_distribution(df, column, title=None, bins=30, kde=True):
-    """
-    Visualize the distribution of a column in a DataFrame.
-    
-    Parameters:
-    -----------
-    df : pandas.DataFrame
-        DataFrame containing the data
-    column : str
-        Column name to visualize
-    title : str
-        Plot title
-    bins : int
-        Number of bins for histogram
-    kde : bool
-        Whether to show kernel density estimate
-    """
+    """Create a histogram to show data distribution."""
     plt.figure(figsize=(10, 6))
     sns.histplot(df[column], bins=bins, kde=kde)
     plt.title(title or f'Distribution of {column}')

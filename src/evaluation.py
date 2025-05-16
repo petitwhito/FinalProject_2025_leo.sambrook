@@ -4,87 +4,39 @@ import pandas as pd
 from collections import defaultdict
 
 def precision_at_k(recommended_items, relevant_items, k=10):
-    """
-    Calculate precision@k for a single user.
-    
-    Parameters:
-    -----------
-    recommended_items : list
-        List of recommended item IDs
-    relevant_items : list
-        List of relevant (ground truth) item IDs
-    k : int
-        Number of recommendations to consider
-        
-    Returns:
-    --------
-    float
-        Precision@k value
-    """
+    """Calculate precision@k for a single user."""
     if len(recommended_items) == 0:
         return 0.0
         
-    # Only consider the top k recommendations
+    # Only consider top k recommendations
     if len(recommended_items) > k:
         recommended_items = recommended_items[:k]
         
-    # Count relevant items in recommendations
+    # Count hits
     hits = len(set(recommended_items) & set(relevant_items))
     
     return hits / len(recommended_items)
 
 def recall_at_k(recommended_items, relevant_items, k=10):
-    """
-    Calculate recall@k for a single user.
-    
-    Parameters:
-    -----------
-    recommended_items : list
-        List of recommended item IDs
-    relevant_items : list
-        List of relevant (ground truth) item IDs
-    k : int
-        Number of recommendations to consider
-        
-    Returns:
-    --------
-    float
-        Recall@k value
-    """
+    """Calculate recall@k for a single user."""
     if len(relevant_items) == 0 or len(recommended_items) == 0:
         return 0.0
         
-    # Only consider the top k recommendations
+    # Only consider top k recommendations
     if len(recommended_items) > k:
         recommended_items = recommended_items[:k]
         
-    # Count relevant items in recommendations
+    # Count hits
     hits = len(set(recommended_items) & set(relevant_items))
     
     return hits / len(relevant_items)
 
 def average_precision(recommended_items, relevant_items, k=10):
-    """
-    Calculate average precision for a single user.
-    
-    Parameters:
-    -----------
-    recommended_items : list
-        List of recommended item IDs
-    relevant_items : list
-        List of relevant (ground truth) item IDs
-    k : int
-        Number of recommendations to consider
-        
-    Returns:
-    --------
-    float
-        Average precision value
-    """
+    """Calculate average precision for a single user."""
     if len(relevant_items) == 0 or len(recommended_items) == 0:
         return 0.0
         
-    # Only consider the top k recommendations
+    # Only consider top k recommendations
     if len(recommended_items) > k:
         recommended_items = recommended_items[:k]
         
@@ -103,27 +55,11 @@ def average_precision(recommended_items, relevant_items, k=10):
     return sum_precision / min(len(relevant_items), k)
 
 def ndcg_at_k(recommended_items, relevant_items, k=10):
-    """
-    Calculate NDCG@k for a single user.
-    
-    Parameters:
-    -----------
-    recommended_items : list
-        List of recommended item IDs
-    relevant_items : list
-        List of relevant (ground truth) item IDs
-    k : int
-        Number of recommendations to consider
-        
-    Returns:
-    --------
-    float
-        NDCG@k value
-    """
+    """Calculate NDCG@k for a single user."""
     if len(relevant_items) == 0 or len(recommended_items) == 0:
         return 0.0
         
-    # Only consider the top k recommendations
+    # Only consider top k recommendations
     if len(recommended_items) > k:
         recommended_items = recommended_items[:k]
     
@@ -131,9 +67,9 @@ def ndcg_at_k(recommended_items, relevant_items, k=10):
     dcg = 0.0
     for i, item in enumerate(recommended_items):
         if item in relevant_items:
-            # Using binary relevance (1 if item is relevant)
+            # Using binary relevance
             rel = 1
-            dcg += rel / np.log2(i + 2)  # i+2 because i starts from 0
+            dcg += rel / np.log2(i + 2)
     
     # Ideal DCG calculation
     ideal_dcg = 0.0
@@ -146,23 +82,7 @@ def ndcg_at_k(recommended_items, relevant_items, k=10):
     return dcg / ideal_dcg
 
 def evaluate_recommendations(recommendations_df, test_interactions_df, k_values=[5, 10, 20]):
-    """
-    Evaluate recommendations using multiple metrics.
-    
-    Parameters:
-    -----------
-    recommendations_df : pandas.DataFrame
-        DataFrame with columns ['user_id', 'video_id', 'rank', 'score']
-    test_interactions_df : pandas.DataFrame
-        DataFrame with columns ['user_id', 'video_id', ...]
-    k_values : list
-        List of k values for evaluation
-        
-    Returns:
-    --------
-    dict
-        Dictionary with evaluation metrics
-    """
+    """Evaluate recommendations using multiple metrics."""
     # Group test interactions by user
     user_interactions = defaultdict(list)
     for _, row in test_interactions_df.iterrows():
@@ -209,55 +129,19 @@ def evaluate_recommendations(recommendations_df, test_interactions_df, k_values=
     return results
 
 def load_data(processed_dir="../data/processed", results_dir="../results"):
-    """
-    Load necessary data for evaluation.
-    
-    Parameters:
-    -----------
-    processed_dir : str
-        Directory containing processed data
-    results_dir : str
-        Directory containing recommendation results
-        
-    Returns:
-    --------
-    tuple
-        (recommendations_df, test_interactions_df)
-    """
+    """Load necessary data for evaluation."""
     # Load recommendations
     recommendations_path = os.path.join(results_dir, "recommendations.csv")
     recommendations_df = pd.read_csv(recommendations_path)
     
     # Load test interactions
     test_interactions_path = os.path.join(processed_dir, "test_interactions.csv")
-    
-    # Sample a small portion of test data if it's too large
     test_interactions_df = pd.read_csv(test_interactions_path, nrows=10000000)
     
     return recommendations_df, test_interactions_df
 
 def evaluate_per_model(recommender, test_interactions_df, users=None, k_values=[5, 10, 20], n=10):
-    """
-    Evaluate each recommendation model separately.
-    
-    Parameters:
-    -----------
-    recommender : KuaiRecRecommender
-        Recommender instance
-    test_interactions_df : pandas.DataFrame
-        DataFrame with test interactions
-    users : list, optional
-        List of users to evaluate
-    k_values : list
-        List of k values for evaluation
-    n : int
-        Number of recommendations to generate
-        
-    Returns:
-    --------
-    dict
-        Dictionary with evaluation metrics for each model
-    """
+    """Evaluate each recommendation model separately."""
     # Group test interactions by user
     user_interactions = defaultdict(list)
     for _, row in test_interactions_df.iterrows():

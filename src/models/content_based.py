@@ -1,8 +1,7 @@
-# Content-based filtering models for KuaiRec recommender system
 import numpy as np
-import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
+import pickle
 
 class ContentBasedModel:
     """Content-based filtering model."""
@@ -17,29 +16,12 @@ class ContentBasedModel:
         
     def fit(self, item_features_df, train_df, content_columns=None, 
             user_col='user_id', item_col='video_id', rating_col='watch_ratio'):
-        """
-        Train the model on the data.
-        
-        Parameters:
-        -----------
-        item_features_df : pandas.DataFrame
-            DataFrame with item features
-        train_df : pandas.DataFrame
-            Training data
-        content_columns : list, optional
-            List of columns to use as content features
-        user_col : str
-            Column name for user IDs
-        item_col : str
-            Column name for item IDs
-        rating_col : str
-            Column name for ratings
-        """
-        # If no content columns specified, use all columns that start with 'category_'
+        """Train model on item features and user interactions."""
+        # Find which columns to use for content features
         if content_columns is None:
             content_columns = [col for col in item_features_df.columns if col.startswith('category_')]
             
-            # Add some additional columns if available
+            # Add engagement metrics if available
             additional_cols = ['watch_ratio_mean', 'engagement_score']
             for col in additional_cols:
                 if col in item_features_df.columns:
@@ -47,21 +29,21 @@ class ContentBasedModel:
         
         self.content_columns = content_columns
         
-        # Extract item IDs and features
+        # Get item IDs and features
         self.item_ids = item_features_df['video_id'].values
         
         # Create item profiles
         item_profiles = item_features_df[content_columns].values
         
-        # Normalize the features
+        # Normalize features
         self.item_profiles = self.scaler.fit_transform(item_profiles)
         
-        # Create a mapping from item ID to profile index
+        # Create lookup table for items
         item_id_to_idx = {item_id: idx for idx, item_id in enumerate(self.item_ids)}
         
-        # Create user profiles as weighted average of item profiles
+        # Build user profiles from their interactions
         for user_id, group in train_df.groupby(user_col):
-            # Get the items this user has interacted with
+            # Track items and ratings
             user_items = []
             user_ratings = []
             
@@ -74,9 +56,9 @@ class ContentBasedModel:
                     user_ratings.append(rating)
             
             if len(user_items) > 0:
-                # Calculate weighted average of item profiles
+                # Create weighted average of item profiles
                 user_ratings = np.array(user_ratings)
-                user_ratings = user_ratings / user_ratings.sum()  # Normalize weights
+                user_ratings = user_ratings / user_ratings.sum()
                 
                 user_profile = np.zeros(self.item_profiles.shape[1])
                 for i, item_idx in enumerate(user_items):
@@ -86,9 +68,34 @@ class ContentBasedModel:
         
         return self
     
+    def recommend(self, user_id, n=10, exclude_items=None):
+        """Get top-N recommendations for a user."""
+        if user_id not in self.user_profiles:
+            return []
+        
+        # Get user profile
+        user_profile = self.user_profiles[user_id]
+        
+        # Calculate similarity with all items
+        similarities = cosine_similarity(user_profile.reshape(1, -1), self.item_profiles)[0]
+        
+        # Remove excluded items
+        if exclude_items:
+            for item_id in exclude_items:
+                try:
+                    content_idx = np.where(self.item_ids == item_id)[0][0]
+                    similarities[content_idx] = -np.inf
+                except:
+                    pass
+        
+        # Find top items
+        top_indices = np.argsort(similarities)[-n:][::-1]
+        
+        # Return recommendations with scores
+        return [(self.item_ids[idx], similarities[idx]) for idx in top_indices]
+    
     def save(self, filepath):
-        """Save the model to a file."""
-        import pickle
+        """Save model to disk."""
         with open(filepath, 'wb') as f:
             pickle.dump({
                 'item_profiles': self.item_profiles,
@@ -100,8 +107,7 @@ class ContentBasedModel:
     
     @classmethod
     def load(cls, filepath):
-        """Load a model from a file."""
-        import pickle
+        """Load model from disk."""
         with open(filepath, 'rb') as f:
             data = pickle.load(f)
         
