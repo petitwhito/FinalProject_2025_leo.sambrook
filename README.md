@@ -49,6 +49,8 @@ To set up the project environment, run:
 pip install -r requirements.txt
 ```
 
+**WARNING:** This project requires significant memory resources. A minimum of 8GB RAM is recommended, with no other memory-intensive processes running simultaneously. Some operations, particularly during model training and evaluation, may consume substantial memory.
+
 ## Project Overview
 
 This project follows a comprehensive pipeline for developing recommender systems:
