@@ -52,3 +52,8 @@ Thumbs.db
 !notebooks/
 !requirements.txt
 !src/models
+
+# Ignore all files in the data directory
+data/KuaiRec/data/*
+# But don't ignore the .gitkeep file
+!data/KuaiRec/data/.gitkeep
