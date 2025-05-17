@@ -8,14 +8,7 @@ This repository contains a complete recommender system implementation using the 
 ├── README.md
 ├── data
 │   ├── KuaiRec
-│   │   ├── data
-│   │   │   ├── big_matrix.csv
-│   │   │   ├── item_categories.csv
-│   │   │   ├── item_daily_features.csv
-│   │   │   ├── kuairec_caption_category.csv
-│   │   │   ├── small_matrix.csv
-│   │   │   ├── social_network.csv
-│   │   │   └── user_features.csv
+│   │   ├── data (Download data and put all csv here)
 ├── notebooks
 │   ├── 1_data_preprocessing.ipynb
 │   ├── 2_feature_engineering.ipynb
@@ -43,6 +36,8 @@ Detailed explanations and implementation details can be found in the respective 
 
 The KuaiRec dataset is available at:
 https://drive.google.com/file/d/1qe5hOSBxzIuxBb1G_Ih5X-O65QElollE/view
+
+**IMPORTANT:** After downloading the dataset, you must extract all CSV files and place them in the `data/KuaiRec/data` directory. The notebooks and source code are configured to look for the data files in this specific location, and the project will not run correctly without this setup.
 
 The dataset contains user-video interaction data from Kuaishou, a popular short-video platform. It includes user features, video features, and user-video interactions with engagement metrics.
 
